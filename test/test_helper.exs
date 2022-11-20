@@ -3,7 +3,7 @@ Enum.each(apps_to_start, &Application.ensure_all_started/1)
 ExUnit.start()
 
 defmodule PathHelpers do
-  def fixture_path() do
+  def fixture_path do
     Path.expand("fixtures", __DIR__)
   end
 
