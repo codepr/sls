@@ -38,7 +38,7 @@ defmodule Sls.ReaderTest do
       writer_pid: writer_pid,
       reader_pid: reader_pid
     } do
-      assert {:ok, {0, 9}} = Writer.put(writer_pid, "test_key", "test_data")
+      assert {:ok, {22, 9}} = Writer.put(writer_pid, "test_key", "test_data")
       assert {:ok, "test_data"} = Reader.get(reader_pid, "test_key")
     end
   end

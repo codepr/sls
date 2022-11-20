@@ -32,7 +32,7 @@ defmodule Sls.WriterTest do
 
   describe "put/2" do
     test "stores offset and size in memory and persist data", %{writer_pid: writer_pid} do
-      assert {:ok, {0, 9}} = Writer.put(writer_pid, "test_key", "test_data")
+      assert {:ok, {22, 9}} = Writer.put(writer_pid, "test_key", "test_data")
     end
   end
 end

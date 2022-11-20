@@ -2,6 +2,7 @@ defmodule Sls.Writer do
   @moduledoc false
   use GenServer
   alias Sls.Index
+  alias Sls.Record
 
   def start_link(opts \\ []) do
     log_path = Keyword.fetch!(opts, :log_path)
@@ -23,10 +24,17 @@ defmodule Sls.Writer do
 
   @impl true
   def handle_call({:put, key, value}, _from, %{fd: fd, current_offset: current_offset} = state) do
-    :ok = IO.binwrite(fd, value)
-    size = byte_size(value)
-    Index.insert(key, current_offset, size)
-    {:reply, {:ok, {current_offset, size}}, %{state | current_offset: current_offset + size}}
+    %{binary_payload: payload, offset: offset, value_size: value_size} =
+      {key, value}
+      |> Record.from_kv()
+      |> Record.to_binary()
+
+    :ok = IO.binwrite(fd, payload)
+    value_offset = current_offset + offset
+    Index.insert(key, value_offset, value_size)
+
+    {:reply, {:ok, {value_offset, value_size}},
+     %{state | current_offset: value_offset + value_size}}
   end
 
   @impl true
