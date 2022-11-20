@@ -17,8 +17,9 @@ defmodule Sls.Writer do
 
   @impl true
   def init(log_path) do
-    Index.init()
+
     fd = File.open!(log_path, [:write, :binary])
+    Index.init(log_path: log_path)
     {:ok, %{fd: fd, current_offset: 0}}
   end
 

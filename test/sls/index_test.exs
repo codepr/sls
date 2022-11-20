@@ -5,9 +5,10 @@ defmodule Sls.IndexTest do
   alias Sls.Index
 
   @test_table :test_table
+  @test_db "test.db"
 
   setup do
-    Index.init(@test_table)
+    Index.init(table: @test_table, log_path: @test_db)
     :ok
   end
 
