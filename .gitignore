@@ -26,3 +26,5 @@ sls-*.tar
 /tmp/
 
 .formatter.exs
+
+test.db
