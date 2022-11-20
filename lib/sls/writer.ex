@@ -8,9 +8,7 @@ defmodule Sls.Writer do
     GenServer.start_link(__MODULE__, log_path, name: __MODULE__)
   end
 
-  def put(key, value) do
-    put(__MODULE__, key, value)
-  end
+  def put(key, value), do: put(__MODULE__, key, value)
 
   def put(pid, key, value) do
     GenServer.call(pid, {:put, key, value})
@@ -18,8 +16,8 @@ defmodule Sls.Writer do
 
   @impl true
   def init(log_path) do
-    fd = File.open!(log_path, [:write, :binary])
     Index.init()
+    fd = File.open!(log_path, [:write, :binary])
     {:ok, %{fd: fd, current_offset: 0}}
   end
 
@@ -29,5 +27,11 @@ defmodule Sls.Writer do
     size = byte_size(value)
     Index.insert(key, current_offset, size)
     {:reply, {:ok, {current_offset, size}}, %{state | current_offset: current_offset + size}}
+  end
+
+  @impl true
+  def terminate(reason, _state) do
+    Index.shutdown()
+    IO.puts("Terminating: #{reason}")
   end
 end

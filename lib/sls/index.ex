@@ -1,19 +1,28 @@
 defmodule Sls.Index do
   @moduledoc false
 
-  def init() do
-    :ets.new(__MODULE__, [:named_table, read_concurrency: true])
+  @table :index_map
+
+  def init(table \\ @table) do
+    :ets.new(table, [:named_table, :protected, read_concurrency: true])
   end
 
-  def insert(key, offset, size) do
-    :ets.insert(__MODULE__, {key, {offset, size}})
+  def insert(table, key, offset, size) do
+    :ets.insert(table, {key, {offset, size}})
     :ok
   end
 
-  def lookup(key) do
-    case :ets.lookup(__MODULE__, key) do
+  def insert(key, offset, size), do: insert(@table, key, offset, size)
+
+  def lookup(table, key) do
+    case :ets.lookup(table, key) do
       [{^key, {offset, size}}] -> {:ok, {offset, size}}
       [] -> {:error, :not_found}
     end
   end
+
+  def lookup(key), do: lookup(@table, key)
+
+  def shutdown(table), do: :ets.delete(table)
+  def shutdown, do: shutdown(@table)
 end
