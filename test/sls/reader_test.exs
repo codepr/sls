@@ -11,8 +11,9 @@ defmodule Sls.ReaderTest do
 
   setup do
     with fixture <- fixture_path(@test_db),
-         writer_pid <- start_supervised!({Writer, log_path: fixture}),
-         reader_pid <- start_supervised!({Reader, log_path: fixture}),
+         writer_pid <-
+           start_supervised!({Writer, log_path: fixture, name: :test_writer, table: :test_table}),
+         reader_pid <- start_supervised!({Reader, log_path: fixture, table: :test_table}),
          :ok <-
            on_exit(fn -> File.rm_rf!(fixture) end) do
       {:ok, writer_pid: writer_pid, reader_pid: reader_pid}
@@ -40,6 +41,12 @@ defmodule Sls.ReaderTest do
     } do
       assert {:ok, {22, 9}} = Writer.put(writer_pid, "test_key", "test_data")
       assert {:ok, "test_data"} = Reader.get(reader_pid, "test_key")
+    end
+
+    test "return :not_found error when a key is not found", %{
+      reader_pid: reader_pid
+    } do
+      assert {:error, :not_found} = Reader.get(reader_pid, "non_existent_key")
     end
   end
 end

@@ -8,7 +8,15 @@ defmodule Sls.Record do
   @type t :: %__MODULE__{key: iodata(), value: iodata(), timestamp: non_neg_integer()}
 
   def from_kv(key, value),
-    do: %__MODULE__{key: key, value: value, timestamp: :os.system_time(:millisecond)}
+    do: %__MODULE__{
+      key: stringify(key),
+      value: stringify(value),
+      timestamp: :os.system_time(:millisecond)
+    }
+
+  defp stringify(data) when is_bitstring(data), do: data
+  defp stringify(data) when is_atom(data), do: Atom.to_string(data)
+  defp stringify(data), do: Kernel.inspect(data)
 
   def from_kv({key, value}), do: from_kv(key, value)
 

@@ -5,7 +5,8 @@ defmodule Sls.Reader do
 
   def start_link(opts \\ []) do
     log_path = Keyword.fetch!(opts, :log_path)
-    GenServer.start_link(__MODULE__, log_path, name: __MODULE__)
+    table = Keyword.get(opts, :table, :index_map)
+    GenServer.start_link(__MODULE__, %{log_path: log_path, table: table})
   end
 
   def get(key), do: get(__MODULE__, key)
@@ -15,14 +16,14 @@ defmodule Sls.Reader do
   end
 
   @impl true
-  def init(log_path) do
+  def init(%{log_path: log_path, table: table}) do
     fd = File.open!(log_path, [:read, :binary])
-    {:ok, %{fd: fd}}
+    {:ok, %{fd: fd, table: table}}
   end
 
   @impl true
-  def handle_call({:get, key}, _from, %{fd: fd}) do
-    case Index.lookup(key) do
+  def handle_call({:get, key}, _from, %{fd: fd, table: table}) do
+    case Index.lookup(table, key) do
       {:ok, {offset, size}} ->
         {:reply, :file.pread(fd, offset, size), %{fd: fd}}
 

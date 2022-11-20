@@ -10,8 +10,7 @@ defmodule Sls.Index do
          {:ok, fd} <- File.open(log_path, [:read, :binary]),
          {_current_offset, offsets} <- load_offsets(fd) do
       File.close(fd)
-      :ets.new(table, [:named_table, :protected, read_concurrency: true])
-      :ets.insert(table, Map.to_list(offsets))
+      warm_up(table, offsets)
     else
       _ -> :ets.new(table, [:named_table, :protected, read_concurrency: true])
     end
@@ -35,6 +34,12 @@ defmodule Sls.Index do
 
   def shutdown(table), do: :ets.delete(table)
   def shutdown, do: shutdown(@table)
+
+  defp warm_up(table, offsets) do
+    table
+    |> :ets.new([:named_table, :protected, read_concurrency: true])
+    |> :ets.insert(Map.to_list(offsets))
+  end
 
   defp load_offsets(fd, offsets \\ %{}, current_offset \\ 0) do
     :file.position(fd, current_offset)

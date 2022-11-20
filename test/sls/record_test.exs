@@ -8,6 +8,12 @@ defmodule Sls.RecordTest do
       assert key == "test_key"
       assert value == "test_value"
     end
+
+    test "stringify key and value" do
+      %{key: key, value: value} = Sls.Record.from_kv(:test_key, 12)
+      assert key == "test_key"
+      assert value == "12"
+    end
   end
 
   describe "from_kv/1" do
