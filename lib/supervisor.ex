@@ -11,8 +11,7 @@ defmodule Sls.Supervisor do
   def init(log_path) do
     children = [
       {Sls.Writer, log_path: log_path},
-      Supervisor.child_spec({Sls.Reader, log_path: log_path}, id: :reader_1),
-      Supervisor.child_spec({Sls.Reader, log_path: log_path}, id: :reader_2)
+      {Sls.ReaderPool, log_path: log_path}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

@@ -1,7 +1,7 @@
 defmodule Sls.Index do
   @moduledoc false
 
-  @table :index_map
+  @table Application.compile_env!(:sls, :default_cache_table)
 
   def init(opts \\ []) do
     table = Keyword.get(opts, :table, @table)

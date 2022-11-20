@@ -4,6 +4,8 @@ defmodule Sls do
   """
   use Application
 
+  @log_path Application.compile_env!(:sls, :log_path)
+
   @doc """
   Hello world.
 
@@ -15,9 +17,9 @@ defmodule Sls do
   """
   @impl true
   def start(_type, _args) do
-    Sls.Supervisor.start_link(log_path: "test.db", name: Sls.Supervisor)
+    Sls.Supervisor.start_link(log_path: @log_path, name: Sls.Supervisor)
   end
 
   defdelegate put(key, value), to: Sls.Writer
-  defdelegate get(key), to: Sls.Reader
+  defdelegate get(key), to: Sls.ReaderPool
 end

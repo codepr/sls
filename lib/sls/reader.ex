@@ -3,7 +3,7 @@ defmodule Sls.Reader do
   use GenServer
   alias Sls.Index
 
-  def start_link(opts \\ []) do
+  def start_link(opts) do
     log_path = Keyword.fetch!(opts, :log_path)
     table = Keyword.get(opts, :table, :index_map)
     GenServer.start_link(__MODULE__, %{log_path: log_path, table: table})
@@ -18,6 +18,7 @@ defmodule Sls.Reader do
   @impl true
   def init(%{log_path: log_path, table: table}) do
     fd = File.open!(log_path, [:read, :binary])
+    Registry.register(Sls.ReaderPool, :readers, _value = nil)
     {:ok, %{fd: fd, table: table}}
   end
 
