@@ -25,6 +25,5 @@ sls-*.tar
 # Temporary files, for example, from tests.
 /tmp/
 
-.formatter.exs
 
 test.db
