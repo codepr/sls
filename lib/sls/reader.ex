@@ -5,8 +5,14 @@ defmodule Sls.Reader do
 
   def start_link(opts) do
     log_path = Keyword.fetch!(opts, :log_path)
-    table = Keyword.get(opts, :table, :index_map)
-    GenServer.start_link(__MODULE__, %{log_path: log_path, table: table})
+    table = Keyword.fetch!(opts, :table)
+    single_process = Keyword.get(opts, :single_process, false)
+
+    GenServer.start_link(__MODULE__, %{
+      log_path: log_path,
+      table: table,
+      single_process: single_process
+    })
   end
 
   def get(key), do: get(__MODULE__, key)
@@ -16,9 +22,9 @@ defmodule Sls.Reader do
   end
 
   @impl true
-  def init(%{log_path: log_path, table: table}) do
+  def init(%{log_path: log_path, table: table, single_process: single_process}) do
     fd = File.open!(log_path, [:read, :binary])
-    Registry.register(Sls.ReaderPool, :readers, _value = nil)
+    if !single_process, do: Registry.register(Sls.ReaderPool, :readers, _value = nil)
     {:ok, %{fd: fd, table: table}}
   end
 

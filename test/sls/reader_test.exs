@@ -7,15 +7,20 @@ defmodule Sls.ReaderTest do
   alias Sls.Reader
   alias Sls.Writer
 
-  @test_db "test.db"
+  @test_db "reader-test.db"
+  @test_table :reader_test_table
 
   setup do
     with fixture <- fixture_path(@test_db),
          writer_pid <-
-           start_supervised!({Writer, log_path: fixture, name: :test_writer, table: :test_table}),
-         reader_pid <- start_supervised!({Reader, log_path: fixture, table: :test_table}),
-         :ok <-
-           on_exit(fn -> File.rm_rf!(fixture) end) do
+           start_supervised!(
+             {Writer, log_path: fixture, name: :read_test_writer, table: @test_table}
+           ),
+         reader_pid <-
+           start_supervised!(
+             {Reader, log_path: fixture, table: @test_table, single_process: true}
+           ),
+         :ok <- on_exit(fn -> File.rm_rf!(fixture) end) do
       {:ok, writer_pid: writer_pid, reader_pid: reader_pid}
     else
       error ->

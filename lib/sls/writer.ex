@@ -4,10 +4,10 @@ defmodule Sls.Writer do
   alias Sls.Index
   alias Sls.Record
 
-  def start_link(opts \\ []) do
+  def start_link(opts) do
     log_path = Keyword.fetch!(opts, :log_path)
+    table = Keyword.fetch!(opts, :table)
     name = Keyword.get(opts, :name, __MODULE__)
-    table = Keyword.get(opts, :table, :index_map)
     GenServer.start_link(__MODULE__, %{log_path: log_path, table: table}, name: name)
   end
 
