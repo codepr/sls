@@ -5,6 +5,7 @@ defmodule Sls.Writer do
   alias Sls.Record
 
   @tombstone "sls_tombstone"
+  @header_size 14
   @crc_size 4
 
   def start_link(opts) do
@@ -32,8 +33,9 @@ defmodule Sls.Writer do
 
   @impl true
   def init(%{log_path: log_path, table: table}) do
-    fd = File.open!(log_path, [:write, :binary])
-    Index.init(log_path: log_path, table: table)
+    fd = File.open!(log_path, [:write, :read, :binary])
+    offsets = load_offsets(fd)
+    Index.init(offsets, table: table)
     {:ok, %{fd: fd, current_offset: 0, table: table}}
   end
 
@@ -74,8 +76,23 @@ defmodule Sls.Writer do
   end
 
   @impl true
-  def terminate(reason, %{table: table}) do
+  def terminate(reason, %{table: table, fd: fd}) do
     Index.shutdown(table)
+    File.close(fd)
     IO.puts("Terminating: #{reason}")
+  end
+
+  defp load_offsets(fd, offsets \\ %{}, current_offset \\ 0) do
+    :file.position(fd, current_offset)
+
+    with <<_timestamp::big-unsigned-integer-size(64), key_size::big-unsigned-integer-size(16),
+           value_size::big-unsigned-integer-size(32)>> <- IO.binread(fd, @header_size),
+         key <- IO.binread(fd, key_size) do
+      value_obs_offset = current_offset + @header_size + key_size
+      offsets = Map.put(offsets, key, {value_obs_offset, value_size})
+      load_offsets(fd, offsets, value_obs_offset + value_size)
+    else
+      :eof -> offsets
+    end
   end
 end
