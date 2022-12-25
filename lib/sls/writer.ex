@@ -7,6 +7,8 @@ defmodule Sls.Writer do
   @tombstone "sls_tombstone"
   @header_size 14
   @crc_size 4
+  @max_key_size 16_384
+  @max_value_size 4_294_967_296
 
   def start_link(opts) do
     log_path = Keyword.fetch!(opts, :log_path)
@@ -20,7 +22,16 @@ defmodule Sls.Writer do
   def put(_pid, _key, @tombstone), do: raise("Tombstone value not valid as value")
 
   def put(pid, key, value) do
-    GenServer.call(pid, {:put, key, value})
+    cond do
+      IO.iodata_length(key) > @max_key_size ->
+        {:error, :invalid_key_size}
+
+      IO.iodata_length(value) > @max_value_size ->
+        {:error, :invalid_value_size}
+
+      true ->
+        GenServer.call(pid, {:put, key, value})
+    end
   end
 
   def delete(key), do: delete(__MODULE__, key)
