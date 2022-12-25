@@ -47,6 +47,20 @@ defmodule Sls.IndexTest do
     end
   end
 
+  describe "delete/1" do
+    setup do
+      Index.init(table: @test_table, log_path: @test_db)
+      :ok
+    end
+
+    test "delete an existing key" do
+      :ok = Index.insert(@test_table, "test_key", 10, 15)
+      assert {:ok, {10, 15}} = Index.lookup(@test_table, "test_key")
+      :ok = Index.delete(@test_table, "test_key")
+      assert {:error, :not_found} = Index.lookup(@test_table, "test_key")
+    end
+  end
+
   describe "init/1" do
     test "warm cache up at start" do
       Index.init(table: @warm_up_test_table, log_path: @warm_up_test_db)

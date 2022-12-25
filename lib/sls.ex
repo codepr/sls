@@ -23,4 +23,5 @@ defmodule Sls do
 
   defdelegate put(key, value), to: Sls.Writer
   defdelegate get(key), to: Sls.ReaderPool
+  defdelegate delete(key), to: Sls.Writer
 end

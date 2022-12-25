@@ -2,6 +2,7 @@ defmodule Sls.Index do
   @moduledoc false
 
   @table Application.compile_env!(:sls, :default_cache_table)
+  @header_size 14
 
   def init(opts \\ []) do
     table = Keyword.get(opts, :table, @table)
@@ -32,6 +33,11 @@ defmodule Sls.Index do
 
   def lookup(key), do: lookup(@table, key)
 
+  def delete(table, key) do
+    :ets.delete(table, key)
+    :ok
+  end
+
   def shutdown(table), do: :ets.delete(table)
   def shutdown, do: shutdown(@table)
 
@@ -44,15 +50,15 @@ defmodule Sls.Index do
   defp load_offsets(fd, offsets \\ %{}, current_offset \\ 0) do
     :file.position(fd, current_offset)
 
-    with <<_timestamp::big-unsigned-integer-size(64)>> <- IO.binread(fd, 8),
-         <<key_size::big-unsigned-integer-size(16)>> <- IO.binread(fd, 2),
-         <<value_size::big-unsigned-integer-size(32)>> <- IO.binread(fd, 4),
+    with <<_timestamp::big-unsigned-integer-size(64), key_size::big-unsigned-integer-size(16),
+           value_size::big-unsigned-integer-size(32)>> <- IO.binread(fd, @header_size),
          key <- IO.binread(fd, key_size) do
-      value_obs_offset = current_offset + 14 + key_size
+      value_obs_offset = current_offset + @header_size + key_size
       offsets = Map.put(offsets, key, {value_obs_offset, value_size})
       load_offsets(fd, offsets, value_obs_offset + value_size)
     else
-      :eof -> {current_offset, offsets}
+      :eof ->
+        {current_offset, offsets}
     end
   end
 end

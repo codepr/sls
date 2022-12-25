@@ -2,6 +2,7 @@ defmodule Sls.Reader do
   @moduledoc false
   use GenServer
   alias Sls.Index
+  alias Sls.Record
 
   def start_link(opts) do
     log_path = Keyword.fetch!(opts, :log_path)
@@ -30,12 +31,23 @@ defmodule Sls.Reader do
 
   @impl true
   def handle_call({:get, key}, _from, %{fd: fd, table: table}) do
-    case Index.lookup(table, key) do
-      {:ok, {offset, size}} ->
-        {:reply, :file.pread(fd, offset, size), %{fd: fd}}
+    with {:ok, {offset, size}} <- Index.lookup(table, key),
+         {:ok, data} <- :file.pread(fd, offset, size),
+         <<crc::binary-size(4), rest::binary>> = data,
+         true <- is_valid?(rest, crc),
+         record <- Record.from_binary(rest) do
+      {:reply, {:ok, record.value}, %{fd: fd}}
+    else
+      false ->
+        {:reply, {:error, :corrupted_data}, %{fd: fd}}
 
-      {:error, _} = error ->
+      error ->
         {:reply, error, %{fd: fd}}
     end
+  end
+
+  defp is_valid?(data, crc) do
+    decoded_crc = :binary.decode_unsigned(crc)
+    :erlang.crc32(data) == decoded_crc
   end
 end

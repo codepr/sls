@@ -14,4 +14,10 @@ defmodule PathHelpers do
   def rm_rf!(path) do
     if File.exists?(path), do: File.rm_rf!(path)
   end
+
+  def pwrite(path, position, bytes) do
+    path
+    |> File.open!([:write, :binary])
+    |> :file.pwrite(position, bytes)
+  end
 end

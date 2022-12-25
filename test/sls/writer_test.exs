@@ -36,7 +36,19 @@ defmodule Sls.WriterTest do
 
   describe "put/2" do
     test "stores offset and size in memory and persist data", %{writer_pid: writer_pid} do
-      assert {:ok, {22, 9}} = Writer.put(writer_pid, "test_key", "test_data")
+      assert {:ok, {0, 35}} = Writer.put(writer_pid, "test_key", "test_data")
+    end
+
+    test "raise on tombstone value as value", %{writer_pid: writer_pid} do
+      assert_raise RuntimeError, "Tombstone value not valid as value", fn ->
+        Writer.put(writer_pid, "test_key", Writer.tombstone())
+      end
+    end
+  end
+
+  describe "delete/1" do
+    test "put a tombstone value to delete a key", %{writer_pid: writer_pid} do
+      assert {:ok, {0, 39}} = Writer.delete(writer_pid, "test-key")
     end
   end
 end
