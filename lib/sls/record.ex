@@ -18,7 +18,7 @@ defmodule Sls.Record do
       timestamp: :os.system_time(:millisecond)
     }
 
-  def size, do: @header_size
+  def header_size, do: @header_size
 
   defp stringify(data) when is_bitstring(data), do: data
   defp stringify(data) when is_atom(data), do: Atom.to_string(data)
@@ -59,7 +59,7 @@ defmodule Sls.Record do
 
     %{
       binary_payload: binary_record,
-      record_size: key_size + value_size + size()
+      record_size: key_size + value_size + header_size()
     }
   end
 

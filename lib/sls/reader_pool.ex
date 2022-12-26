@@ -38,4 +38,9 @@ defmodule Sls.ReaderPool do
     {pid, _value = nil} = Enum.random(readers)
     Reader.get(pid, key)
   end
+
+  def broadcast_new_datafile(log_path) do
+    readers = Registry.lookup(__MODULE__, :readers)
+    Enum.each(readers, fn pid -> Reader.add_new_datafile(pid, log_path) end)
+  end
 end

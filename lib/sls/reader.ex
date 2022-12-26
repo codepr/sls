@@ -13,7 +13,8 @@ defmodule Sls.Reader do
     GenServer.start_link(__MODULE__, %{
       log_path: log_path,
       table: table,
-      single_process: single_process
+      single_process: single_process,
+      datafiles: []
     })
   end
 
@@ -21,6 +22,10 @@ defmodule Sls.Reader do
 
   def get(pid, key) do
     GenServer.call(pid, {:get, key})
+  end
+
+  def add_new_datafile(pid, log_path) do
+    GenServer.call(pid, {:add_new_datafile, log_path})
   end
 
   @impl true
@@ -45,6 +50,12 @@ defmodule Sls.Reader do
       error ->
         {:reply, error, state}
     end
+  end
+
+  @impl true
+  def handle_call({:add_new_datafile, log_path}, _from, %{datafiles: datafiles} = state) do
+    datafile = DataFile.open!(%{id: 1, path: log_path, readonly?: true})
+    {:reply, :ok, %{state | datafiles: [datafile | datafiles]}}
   end
 
   defp is_valid?(data, crc) do
