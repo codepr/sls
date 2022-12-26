@@ -19,8 +19,6 @@ defmodule Sls.Writer do
 
   def put(key, value), do: put(__MODULE__, key, value)
 
-  def put(_pid, _key, @tombstone), do: raise("Tombstone value not valid as value")
-
   def put(pid, key, value) do
     cond do
       IO.iodata_length(key) > @max_key_size ->
@@ -28,6 +26,9 @@ defmodule Sls.Writer do
 
       IO.iodata_length(value) > @max_value_size ->
         {:error, :invalid_value_size}
+
+      value == tombstone() ->
+        {:error, :invalid_value_tombstone}
 
       true ->
         GenServer.call(pid, {:put, key, value})

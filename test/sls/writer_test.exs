@@ -39,10 +39,11 @@ defmodule Sls.WriterTest do
       assert {:ok, {0, 35}} = Writer.put(writer_pid, "test_key", "test_data")
     end
 
-    test "raises on tombstone value as value", %{writer_pid: writer_pid} do
-      assert_raise RuntimeError, "Tombstone value not valid as value", fn ->
-        Writer.put(writer_pid, "test_key", Writer.tombstone())
-      end
+    test "returns an :invalid_value_tombstone error when a tombstone value is set", %{
+      writer_pid: writer_pid
+    } do
+      assert {:error, :invalid_value_tombstone} =
+               Writer.put(writer_pid, "test_key", Writer.tombstone())
     end
 
     test "returns an :invalid_key_size error when key size exceed the 2^16 limit", %{
