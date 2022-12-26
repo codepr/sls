@@ -1,6 +1,7 @@
 defmodule Sls.Writer do
   @moduledoc false
   use GenServer
+  alias Sls.DataFile
   alias Sls.Index
   alias Sls.Record
 
@@ -45,66 +46,111 @@ defmodule Sls.Writer do
 
   @impl true
   def init(%{log_path: log_path, table: table}) do
-    fd = File.open!(log_path, [:write, :read, :binary])
-    offsets = load_offsets(fd)
-    Index.init(offsets, table: table)
-    {:ok, %{fd: fd, current_offset: 0, table: table}}
+    datafile = DataFile.open!(%{id: 1, path: log_path, readonly?: false})
+    offsets = load_offsets(datafile)
+
+    last_offset =
+      if map_size(offsets) > 0 do
+        offsets
+        |> Map.values()
+        |> Enum.map(fn {offset, size, _value} -> offset + size end)
+        |> Enum.max()
+      else
+        0
+      end
+
+    offsets
+    |> Map.filter(fn {_k, {_offset, _size, value}} -> value != tombstone() end)
+    |> Map.to_list()
+    |> Map.new(fn {k, {offset, size, _value}} -> {k, {offset, size}} end)
+    |> Index.init(table: table)
+
+    {:ok, %{df: datafile, current_offset: last_offset, table: table}}
   end
 
   @impl true
   def handle_call(
         {:put, key, value},
         _from,
-        %{fd: fd, current_offset: current_offset, table: table} = state
+        %{df: datafile, current_offset: current_offset, table: table} = state
       ) do
     %{binary_payload: payload, record_size: record_size, crc: crc} =
       {key, value}
       |> Record.from_kv()
       |> Record.to_binary()
 
-    :ok = IO.binwrite(fd, crc <> payload)
-    Index.insert(table, key, current_offset, record_size + @crc_size)
+    case DataFile.append(datafile, crc <> payload) do
+      {:ok, datafile} ->
+        Index.insert(table, key, current_offset, record_size + @crc_size)
 
-    {:reply, {:ok, {current_offset, record_size + @crc_size}},
-     %{state | current_offset: current_offset + record_size + @crc_size}}
+        {:reply, {:ok, {current_offset, record_size + @crc_size}},
+         %{state | df: datafile, current_offset: current_offset + record_size + @crc_size}}
+
+      _error ->
+        {:reply, {:error, {current_offset, 0}}, state}
+    end
   end
 
   @impl true
   def handle_call(
         {:delete, key},
         _from,
-        %{fd: fd, current_offset: current_offset, table: table} = state
+        %{df: datafile, current_offset: current_offset, table: table} = state
       ) do
     %{binary_payload: payload, record_size: record_size, crc: crc} =
       {key, tombstone()}
       |> Record.from_kv()
       |> Record.to_binary()
 
-    :ok = IO.binwrite(fd, crc <> payload)
-    Index.delete(table, key)
+    case DataFile.append(datafile, crc <> payload) do
+      {:ok, datafile} ->
+        Index.delete(table, key)
 
-    {:reply, {:ok, {current_offset, record_size + @crc_size}},
-     %{state | current_offset: current_offset + record_size + @crc_size}}
+        {:reply, {:ok, {current_offset, record_size + @crc_size}},
+         %{state | df: datafile, current_offset: current_offset + record_size + @crc_size}}
+
+      _error ->
+        {:reply, {:error, {current_offset, 0}}, state}
+    end
   end
 
   @impl true
-  def terminate(reason, %{table: table, fd: fd}) do
+  def terminate(reason, %{table: table, df: datafile}) do
     Index.shutdown(table)
-    File.close(fd)
+    DataFile.close(datafile)
     IO.puts("Terminating: #{reason}")
   end
 
-  defp load_offsets(fd, offsets \\ %{}, current_offset \\ 0) do
-    :file.position(fd, current_offset)
+  defp load_offsets(datafile, offsets \\ %{}, current_offset \\ 0) do
+    with {:ok, {data, datafile}} <-
+           DataFile.read_at(datafile, current_offset, @header_size + @crc_size),
+         {key_size, value_size} <- decode_header(data),
+         {:ok, {key, datafile}} <-
+           DataFile.read_at(datafile, current_offset + @header_size + @crc_size, key_size),
+         {:ok, {value, datafile}} <-
+           DataFile.read_at(
+             datafile,
+             current_offset + @header_size + @crc_size + key_size,
+             value_size
+           ) do
+      value_offset = current_offset + @header_size + @crc_size + key_size + value_size
 
-    with <<_timestamp::big-unsigned-integer-size(64), key_size::big-unsigned-integer-size(16),
-           value_size::big-unsigned-integer-size(32)>> <- IO.binread(fd, @header_size),
-         key <- IO.binread(fd, key_size) do
-      value_obs_offset = current_offset + @header_size + key_size
-      offsets = Map.put(offsets, key, {value_obs_offset, value_size})
-      load_offsets(fd, offsets, value_obs_offset + value_size)
+      offsets = Map.put(offsets, key, {current_offset, value_offset - current_offset, value})
+
+      load_offsets(datafile, offsets, value_offset)
     else
-      :eof -> offsets
+      error ->
+        case error do
+          :eof -> offsets
+          {:error, _reason} = e -> e
+        end
     end
+  end
+
+  defp decode_header(data) do
+    <<_crc::binary-size(4), _timestamp::binary-size(8), key_size::big-unsigned-integer-size(16),
+      value_size::big-unsigned-integer-size(32)>> = data
+
+    {key_size, value_size}
   end
 end

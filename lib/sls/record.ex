@@ -31,18 +31,16 @@ defmodule Sls.Record do
   end
 
   def from_binary(data) do
-    with <<timestamp_b::binary-size(8), key_size_b::binary-size(2), value_size_b::binary-size(4),
-           rest::binary>> = data,
-         timestamp <- :binary.decode_unsigned(timestamp_b),
-         key_size <- :binary.decode_unsigned(key_size_b),
-         value_size <- :binary.decode_unsigned(value_size_b),
-         <<key::binary-size(key_size), value::binary-size(value_size)>> = rest do
-      %__MODULE__{
-        timestamp: timestamp,
-        key: key,
-        value: value
-      }
-    end
+    <<timestamp::big-unsigned-integer-size(64), key_size::big-unsigned-integer-size(16),
+      value_size::big-unsigned-integer-size(32), rest::binary>> = data
+
+    <<key::binary-size(key_size), value::binary-size(value_size)>> = rest
+
+    %__MODULE__{
+      timestamp: timestamp,
+      key: key,
+      value: value
+    }
   end
 
   defp to_binary_record(%{key: key, value: value, timestamp: timestamp}) do

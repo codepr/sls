@@ -1,6 +1,7 @@
 defmodule Sls.Reader do
   @moduledoc false
   use GenServer
+  alias Sls.DataFile
   alias Sls.Index
   alias Sls.Record
 
@@ -24,25 +25,25 @@ defmodule Sls.Reader do
 
   @impl true
   def init(%{log_path: log_path, table: table, single_process: single_process}) do
-    fd = File.open!(log_path, [:read, :binary])
+    datafile = DataFile.open!(%{id: 1, path: log_path, readonly?: true})
     if !single_process, do: Registry.register(Sls.ReaderPool, :readers, _value = nil)
-    {:ok, %{fd: fd, table: table}}
+    {:ok, %{df: datafile, table: table}}
   end
 
   @impl true
-  def handle_call({:get, key}, _from, %{fd: fd, table: table}) do
+  def handle_call({:get, key}, _from, %{df: datafile, table: table} = state) do
     with {:ok, {offset, size}} <- Index.lookup(table, key),
-         {:ok, data} <- :file.pread(fd, offset, size),
+         {:ok, {data, datafile}} <- DataFile.read_at(datafile, offset, size),
          <<crc::binary-size(4), rest::binary>> = data,
          true <- is_valid?(rest, crc),
          record <- Record.from_binary(rest) do
-      {:reply, {:ok, record.value}, %{fd: fd}}
+      {:reply, {:ok, record.value}, %{state | df: datafile}}
     else
       false ->
-        {:reply, {:error, :corrupted_data}, %{fd: fd}}
+        {:reply, {:error, :corrupted_data}, state}
 
       error ->
-        {:reply, error, %{fd: fd}}
+        {:reply, error, state}
     end
   end
 
