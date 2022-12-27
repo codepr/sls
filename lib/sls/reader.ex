@@ -6,12 +6,12 @@ defmodule Sls.Reader do
   alias Sls.Record
 
   def start_link(opts) do
-    log_path = Keyword.fetch!(opts, :log_path)
+    path = Keyword.fetch!(opts, :path)
     table = Keyword.fetch!(opts, :table)
     single_process = Keyword.get(opts, :single_process, false)
 
     GenServer.start_link(__MODULE__, %{
-      log_path: log_path,
+      path: path,
       table: table,
       single_process: single_process,
       datafiles: []
@@ -24,13 +24,13 @@ defmodule Sls.Reader do
     GenServer.call(pid, {:get, key})
   end
 
-  def add_new_datafile(pid, log_path) do
-    GenServer.call(pid, {:add_new_datafile, log_path})
+  def add_new_datafile(pid, path) do
+    GenServer.call(pid, {:add_new_datafile, path})
   end
 
   @impl true
-  def init(%{log_path: log_path, table: table, single_process: single_process}) do
-    datafile = DataFile.open!(%{id: 1, path: log_path, readonly?: true})
+  def init(%{path: path, table: table, single_process: single_process}) do
+    datafile = DataFile.open!(%{id: 1, path: path, readonly?: true})
     if !single_process, do: Registry.register(Sls.ReaderPool, :readers, _value = nil)
     {:ok, %{df: datafile, table: table}}
   end
@@ -53,8 +53,8 @@ defmodule Sls.Reader do
   end
 
   @impl true
-  def handle_call({:add_new_datafile, log_path}, _from, %{datafiles: datafiles} = state) do
-    datafile = DataFile.open!(%{id: 1, path: log_path, readonly?: true})
+  def handle_call({:add_new_datafile, path}, _from, %{datafiles: datafiles} = state) do
+    datafile = DataFile.open!(%{id: 1, path: path, readonly?: true})
     {:reply, :ok, %{state | datafiles: [datafile | datafiles]}}
   end
 

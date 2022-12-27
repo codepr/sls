@@ -4,15 +4,15 @@ defmodule Sls.Supervisor do
 
   def start_link(opts) do
     table = Keyword.fetch!(opts, :table)
-    log_path = Keyword.fetch!(opts, :log_path)
-    Supervisor.start_link(__MODULE__, %{log_path: log_path, table: table}, opts)
+    path = Keyword.fetch!(opts, :path)
+    Supervisor.start_link(__MODULE__, %{path: path, table: table}, opts)
   end
 
   @impl true
-  def init(%{log_path: log_path, table: table}) do
+  def init(%{path: path, table: table}) do
     children = [
-      {Sls.Writer, log_path: log_path, table: table},
-      {Sls.ReaderPool, log_path: log_path, table: table}
+      {Sls.Writer, path: path, table: table},
+      {Sls.ReaderPool, path: path, table: table}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

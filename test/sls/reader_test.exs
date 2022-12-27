@@ -13,13 +13,9 @@ defmodule Sls.ReaderTest do
   setup do
     with fixture <- fixture_path(@test_db),
          writer_pid <-
-           start_supervised!(
-             {Writer, log_path: fixture, name: :read_test_writer, table: @test_table}
-           ),
+           start_supervised!({Writer, path: fixture, name: :read_test_writer, table: @test_table}),
          reader_pid <-
-           start_supervised!(
-             {Reader, log_path: fixture, table: @test_table, single_process: true}
-           ),
+           start_supervised!({Reader, path: fixture, table: @test_table, single_process: true}),
          :ok <- on_exit(fn -> File.rm_rf!(fixture) end) do
       {:ok, writer_pid: writer_pid, reader_pid: reader_pid}
     else

@@ -13,7 +13,7 @@ defmodule Sls.WriterTest do
     with fixture <- fixture_path(@test_db),
          writer_pid <-
            start_supervised!(
-             {Writer, log_path: fixture, name: :writer_test_writer, table: @test_table}
+             {Writer, path: fixture, name: :writer_test_writer, table: @test_table}
            ),
          :ok <- on_exit(fn -> File.rm_rf!(fixture) end) do
       {:ok, writer_pid: writer_pid}

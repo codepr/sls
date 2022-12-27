@@ -12,10 +12,10 @@ defmodule Sls.Writer do
   @max_value_size 4_294_967_296
 
   def start_link(opts) do
-    log_path = Keyword.fetch!(opts, :log_path)
+    path = Keyword.fetch!(opts, :path)
     table = Keyword.fetch!(opts, :table)
     name = Keyword.get(opts, :name, __MODULE__)
-    GenServer.start_link(__MODULE__, %{log_path: log_path, table: table}, name: name)
+    GenServer.start_link(__MODULE__, %{path: path, table: table}, name: name)
   end
 
   def put(key, value), do: put(__MODULE__, key, value)
@@ -45,8 +45,8 @@ defmodule Sls.Writer do
   def tombstone, do: @tombstone
 
   @impl true
-  def init(%{log_path: log_path, table: table}) do
-    datafile = DataFile.open!(%{id: 1, path: log_path, readonly?: false})
+  def init(%{path: path, table: table}) do
+    datafile = DataFile.open!(%{id: 1, path: path, readonly?: false})
     offsets = load_offsets(datafile)
 
     last_offset =
