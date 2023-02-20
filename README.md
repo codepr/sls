@@ -1,6 +1,22 @@
 # Sls
 
-**TODO: Add description**
+Simple [Bitcask](https://riak.com/assets/bitcask-intro.pdf) implementation using
+`GenServer`.
+
+The key benefits are:
+
+- Low latency per item read or written
+- Consistent performance
+- Handles datasets larger than RAM
+- Small design specification
+
+The main drawback is:
+
+- All your keys must fit in RAM
+
+GenServers are used to both write and read to the datafiles, using a single
+GenServer process to write and multiple GenServers to read. The in-memory
+index is based on the `ets` cache.
 
 ## Installation
 
